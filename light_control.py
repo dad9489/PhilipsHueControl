@@ -1,6 +1,7 @@
 import json
 import requests
 import sys
+import pathlib
 
 READ = {"on": True, "bri": 254, "hue": 8593, "sat": 121, "xy": [0.4452, 0.4068], "ct": 343, "colormode": "xy"}
 RELAX = {"on": True, "bri": 144, "hue": 8593, "sat": 121, "xy": [0.5018, 0.4152], "ct": 447, "colormode": "xy"}
@@ -11,7 +12,8 @@ DEFAULT_ROOM = 'Davids Room'
 
 
 def get_base_url():
-    with open('user.json') as f:
+    path = str(pathlib.Path(__file__).parent.absolute())
+    with open(path+'/user.json') as f:
         user = json.load(f)
     user = user['username']
     try:
