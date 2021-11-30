@@ -39,7 +39,7 @@ def main():
         action = READ
     elif action_str == "relax":
         action = RELAX
-    elif action_str == "dimmed":
+    elif action_str == "dimmed" or action_str == "nightlight":
         action = DIMMED
     elif action_str == "off":
         action = OFF
