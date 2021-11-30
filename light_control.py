@@ -46,7 +46,6 @@ def main():
     else:
         raise TypeError(f"Invalid command argument '{action_str}'")
     requests.put(base_url+f"/groups/{room_id}/action", data=json.dumps(action))
-    x = 1
 
 
 if __name__ == '__main__':
