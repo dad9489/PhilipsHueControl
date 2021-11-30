@@ -6,7 +6,6 @@ import time
 import os
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 PATH = str(pathlib.Path(__file__).parent.absolute())
@@ -14,19 +13,20 @@ DEFAULT_ROOM = 'davids room'
 
 DELIMITER = '#$#$#'
 
-# If the resource is a room, we just get the name. If its a scene, multiple rooms can have scenes with
-# the same name so we also add the room id to the key to ensure the keys are unique
+# These functions are used as helpers to for consistency in constructing data
 extract_name_func = lambda x: x['metadata']['name'].lower()
 scene_name_func = lambda x, y: x + DELIMITER + y
 
 
 class HueCommunicator:
+    """
+    This class is used to execute functions with the Hue API. It can apply a given scene to a given room and turn off
+    the lights in a given room.
+    """
     def __init__(self):
-        start = time.time()
         with open(PATH + '/user.json') as f:
             user = json.load(f)
         self.user = user['username']
-        print(f"Loaded file in {time.time() - start}s")
 
         if os.path.exists(PATH + '/cache.json'):
             with open(PATH + '/cache.json') as f:
@@ -36,26 +36,14 @@ class HueCommunicator:
 
         if 'base_url' in self.cache:
             self.base_url = self.cache['base_url']
-            # Check base url
-            # valid = True
-            # try:
-            #     # TODO should we do this validation check? Is it necessary?
-            #     start_valid_check = time.time()
-            #     status = requests.get('://'.join(urlsplit(self.base_url)[0:2]), verify=False,
-            #                           headers={'hue-application-key': self.user}).status_code
-            #     valid = (status == 200)
-            # except requests.exceptions.ConnectionError:
-            #     valid = False
-            #
-            # if not valid:
-            #     self._find_base_url()
-            # else:
-            #     print(f"Verified cached base url in {time.time() - start_valid_check}s")
         else:
             self._find_base_url()
-        print(f"Init in {time.time() - start}s")
 
     def _find_base_url(self):
+        """
+        Used to find the base url of the Hue bridge. Saves the value to the cache when complete
+        :return: None
+        """
         res = requests.get('https://discovery.meethue.com/')
         res = json.loads(res.content)
         ip = res[0]['internalipaddress']
@@ -63,6 +51,15 @@ class HueCommunicator:
         self.cache['base_url'] = self.base_url
 
     def _get_room(self, expected_room, retried=False):
+        """
+        Gets the API id of the room with the given name. The cache is first checked for a room with the given name. If
+        there is a cache, but no room with this name, we pull the data anyway because the cache might be out of date. If
+        we timeout talking to the API, we refresh the base url in the cache. If we query the API for room ids, we save
+        that to the cache.
+        :param expected_room: The string name of the room we want the id of
+        :param retried: flag to prevent infinite recursion (if we need to retry more than once, stop and throw an error)
+        :return: The API id of the room
+        """
         try:
             if 'room' in self.cache and self.cache['room'] != {}:
                 resource_res = self.cache['room']
@@ -90,9 +87,23 @@ class HueCommunicator:
                 self.cache['room'] = {}
                 self._find_base_url()
                 return self._get_room(expected_room, retried=True)
+
         return resource_res[expected_room]
 
     def _get_scene(self, expected_scene, room_name, room_id, retried=False):
+        """
+        Gets the API id of the scene with the given name that is within the given room. It needs to be based on the room
+        as well because multiple rooms can have scenes with the same name. The cache is first checked for a scene with
+        the given name. If there is a cache, but no scene with this name in this room, we pull the data anyway because
+        the cache might be out of date. If the room id is not found to belong to any scene, we refresh the rooms because
+        the cache may be wrong. If we timeout talking to the API, we refresh the base url in the cache. If we query the
+        API for scene ids, we save that to the cache.
+        :param expected_scene: The string name of the scene we want the id of
+        :param room_name: The string name of the room that this scene is for
+        :param room_id: The API id of the room
+        :param retried: flag to prevent infinite recursion (if we need to retry more than once, stop and throw an error)
+        :return: The API id of the scene
+        """
         try:
             if 'scene' in self.cache and self.cache['scene'] != {}:
                 resource_res = self.cache['scene']
@@ -103,7 +114,8 @@ class HueCommunicator:
                 if room_id not in rooms_with_scenes:
                     self.cache['room'] = {}
                     room_id = self._get_room(room_name)
-                resource_res = {scene_name_func(extract_name_func(x), x['group']['rid']): x['id'] for x in resource_res['data']}
+                resource_res = {scene_name_func(extract_name_func(x), x['group']['rid']): x['id'] for x in
+                                resource_res['data']}
                 self.cache['scene'] = resource_res
 
             unique_scene = scene_name_func(expected_scene, room_id)
@@ -125,6 +137,15 @@ class HueCommunicator:
         return resource_res[unique_scene]
 
     def _get_room_grouped_light(self, expected_room, retried=False):
+        """
+        Gets the API id of the grouped lights within the room with the given name. The cache is first checked for a
+        grouped light in a room with the given name. If there is a cache, but no grouped light in a room with this name,
+        we pull the data anyway because the cache might be out of date. If we timeout talking to the API, we refresh the
+        base url in the cache. If we query the API for grouped light ids, we save that to the cache.
+        :param expected_room: The string name of the room we want the id of
+        :param retried: flag to prevent infinite recursion (if we need to retry more than once, stop and throw an error)
+        :return: The API id of the grouped light for the room
+        """
         try:
             if 'grouped_light' in self.cache and self.cache['grouped_light'] != {}:
                 resource_res = self.cache['grouped_light']
@@ -156,24 +177,27 @@ class HueCommunicator:
 
     def apply_scene_to_room(self, room_name, scene_name, retried_ip=False, retried_data=False):
         """
-        Given a room name and a scene name, applies that scene to that room if possible. Throws an error if the room
-        doesn't exist, if the scene doesn't exist in that room, or if something else goes wrong.
-        :param room_name: The string name of the room
-        :param scene_name: The string name of the scene
+        Given a room name and a scene name, applies that scene to that room. Data is cached to make this process faster.
+        Any cached data is used first, but if errors occur the cache is refreshed and that data is queried from the API.
+        Any new data is then saved to the cache. If we timeout talking to the API, we refresh the base url in the cache.
+        :param room_name: The string name of the room containing the scene
+        :param scene_name: The string name of the scene to apply
+        :param retried_ip: flag to prevent infinite recursion when finding the Hue Bridge IP (if we need to retry more
+        than once, stop and throw an error)
+        :param retried_data: flag to prevent infinite recursion when refreshing data (if we need to retry more than
+        once, stop and throw an error)
+        :return: None
         """
-        start = time.time()
         if 'room' in self.cache and room_name in self.cache['room']:
             room_id = self.cache['room'][room_name]
         else:
             room_id = self._get_room(room_name)
-        print(f"Got room id in {time.time() - start}s")
 
         unique_scene_name = scene_name_func(scene_name, room_id)
         if 'scene' in self.cache and unique_scene_name in self.cache['scene']:
             scene_id = self.cache['scene'][unique_scene_name]
         else:
             scene_id = self._get_scene(scene_name, room_name, room_id)
-        print(f"Got scenes in {time.time() - start}s")
 
         # Apply the scene to the room
         try:
@@ -196,14 +220,22 @@ class HueCommunicator:
                 self._find_base_url()
                 return self.apply_scene_to_room(room_name, scene_name, retried_ip=True)
 
-        print(f"Applied operation in {time.time() - start}s")
         if result.status_code != 200:
             raise Exception(f"Something went wrong applying the scene: {result.status_code}: {result.reason}")
 
     def turn_off_room(self, room_name, retried_ip=False, retried_data=False):
-        start = time.time()
+        """
+        Given a room, turns off the lights in that room. This is done by getting the grouped light id for that room and
+        turning off all the lights at once. Data is cached to make this process faster. Any cached data is used first,
+        but if errors occur the cache is refreshed and that data is queried from the API.
+        :param room_name: The string name of the room where the lights should be turned off
+        ::param retried_ip: flag to prevent infinite recursion when finding the Hue Bridge IP (if we need to retry more
+        than once, stop and throw an error)
+        :param retried_data: flag to prevent infinite recursion when refreshing data (if we need to retry more than
+        once, stop and throw an error)
+        :return: None
+        """
         grouped_light = self._get_room_grouped_light(room_name)
-        print(f"Got grouped light in {time.time() - start}s")
 
         try:
             result = requests.put(self.base_url + f"/resource/grouped_light/{grouped_light}",
@@ -224,7 +256,6 @@ class HueCommunicator:
                 self._find_base_url()
                 return self.turn_off_room(room_name, retried_ip=True)
 
-        print(f"Applied result in {time.time() - start}s")
         if result.status_code != 200 and result.status_code != 207:
             raise Exception(f"Something went wrong applying the scene: {result.status_code}: {result.reason}")
 
@@ -234,7 +265,7 @@ class HueCommunicator:
 
 
 def main():
-    action_str = sys.argv[1].lower()
+    scene_name = sys.argv[1].lower()
     if len(sys.argv) > 2:
         room = sys.argv[2].lower()
     else:
@@ -243,10 +274,10 @@ def main():
     hue = HueCommunicator()
 
     total_start = time.time()
-    if action_str == 'off':
+    if scene_name == 'off':
         hue.turn_off_room(room)
     else:
-        hue.apply_scene_to_room(room, action_str)
+        hue.apply_scene_to_room(room, scene_name)
     print(f"Finished whole operation in {time.time() - total_start}s")
 
     hue.save_cache()
