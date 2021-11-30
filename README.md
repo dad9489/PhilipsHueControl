@@ -3,11 +3,9 @@
 This is a script for controlling the Philips Hue light bulbs in my house. I have it hooked up to macros on my keyboard
 to control my lights with the touch of a button.
 
-In order to run this script, you must create a json file titled user.json that contains the following information:
+In order to run this script, you must create a json file titled `user.json` that contains the following information:
 ```
-{
-    "username": PHILIPS_HUE_USERNAME
-}
+{ "username": PHILIPS_HUE_USERNAME }
 ```
 `PHILIPS_HUE_USERNAME` is the id of the user on your Philips Hue bridge. For more information about creating this
 user visit, https://developers.meethue.com/develop/get-started-2/.
@@ -33,3 +31,9 @@ This means executing the v2 script could take longer than v1. To counteract this
 `light_control_v2.py`. It will cache data pulled from the API so subsequent calls are faster. If anything changes in
 the API such as the IP address of the Hue Bridge, the internal id of a room, etc., the cache is updated with the new
 data. The script call that caused the update will be slower, but all others after it will remain fast.
+
+## AutoHotKey
+
+`light_control.ahk` can be used to hook up this script to macros on a keyboard. The script right now has F20 to F23
+controlling the lights for "Davids Room" and Ctrl+F20 to Ctrl+F23 controlling the lights for "Living Room". This can be
+adapted and changed to be whatever hotkeys, rooms, and scenes you wish.
