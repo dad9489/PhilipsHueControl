@@ -10,6 +10,6 @@ F23::Light_Control("nightlight", "Davids Room")
 
 
 Light_Control(setting, room) {
-  Run "C:\Users\David\Documents\Personal Projects\PhilipsHueControl\light_control_v2.py" %setting% "%room%"
+  Run "C:\Users\David\Documents\Personal Projects\PhilipsHueControl\light_control_v2.py" %setting% "%room%",, Hide
   return
 }
