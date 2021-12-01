@@ -13,8 +13,9 @@ DEFAULT_ROOM = 'davids room'
 
 DELIMITER = '#$#$#'
 
-# These functions are used as helpers to for consistency in constructing data
+# Gets the resource name from a Hue API object
 extract_name_func = lambda x: x['metadata']['name'].lower()
+# Essentially a hash for the scene name that makes it unique to the room. Could be replaced with an actual hash function
 scene_name_func = lambda x, y: x + DELIMITER + y
 
 
@@ -23,6 +24,7 @@ class HueCommunicator:
     This class is used to execute functions with the Hue API. It can apply a given scene to a given room and turn off
     the lights in a given room.
     """
+
     def __init__(self):
         with open(PATH + '/user.json') as f:
             user = json.load(f)
@@ -290,10 +292,9 @@ def main():
                 print('ERROR: ' + str(e))
 
     do_operation()
+    hue.save_cache()
 
     print(f"Finished whole operation in {time.time() - total_start}s")
-
-    hue.save_cache()
 
 
 if __name__ == '__main__':
