@@ -274,10 +274,23 @@ def main():
     hue = HueCommunicator()
 
     total_start = time.time()
-    if scene_name == 'off':
-        hue.turn_off_room(room)
-    else:
-        hue.apply_scene_to_room(room, scene_name)
+
+    def do_operation(retry=False):
+        try:
+            if scene_name == 'off':
+                hue.turn_off_room(room)
+            else:
+                hue.apply_scene_to_room(room, scene_name)
+        except Exception as e:
+            # As a one time last resort, if we get an exception, clear the cache and try again
+            if not retry:
+                hue.cache = {}
+                do_operation(retry=True)
+            else:
+                print('ERROR: ' + str(e))
+
+    do_operation()
+
     print(f"Finished whole operation in {time.time() - total_start}s")
 
     hue.save_cache()
