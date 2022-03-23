@@ -157,7 +157,7 @@ class HueCommunicator:
 
                 # If the resource is a room, we just get the name. If its a scene, multiple rooms can have scenes with
                 # the same name so we also add the room id to the key to ensure the keys are unique
-                resource_res = {extract_name_func(x): x['grouped_services'][0]['rid'] for x in resource_res['data']}
+                resource_res = {extract_name_func(x): x['services'][0]['rid'] for x in resource_res['data']}
                 self.cache['grouped_light'] = resource_res
 
             if expected_room not in resource_res:
@@ -204,7 +204,7 @@ class HueCommunicator:
         # Apply the scene to the room
         try:
             result = requests.put(self.base_url + f"/resource/scene/{scene_id}",
-                                  data=json.dumps({"recall": {"status": "active"}}), verify=False,
+                                  data=json.dumps({"recall": {"action": "active"}}), verify=False,
                                   headers={'hue-application-key': self.user}, timeout=1)
             if result.status_code == 404:
                 if retried_data:
