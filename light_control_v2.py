@@ -4,6 +4,7 @@ import sys
 import pathlib
 import time
 import os
+from copy import deepcopy
 
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
@@ -35,6 +36,8 @@ class HueCommunicator:
                 self.cache = json.load(f)
         else:
             self.cache = {}
+
+        self.cache_unchanged = deepcopy(self.cache)
 
         if 'base_url' in self.cache:
             self.base_url = self.cache['base_url']
@@ -262,8 +265,9 @@ class HueCommunicator:
             raise Exception(f"Something went wrong applying the scene: {result.status_code}: {result.reason}")
 
     def save_cache(self):
-        with open(PATH + '/cache.json', 'w+') as f:
-            f.write(json.dumps(self.cache))
+        if self.cache != self.cache_unchanged:
+            with open(PATH + '/cache.json', 'w+') as f:
+                f.write(json.dumps(self.cache))
 
 
 def main():
