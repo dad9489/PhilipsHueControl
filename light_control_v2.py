@@ -50,6 +50,11 @@ class HueCommunicator:
         :return: None
         """
         res = requests.get('https://discovery.meethue.com/')
+        if res.status_code != 200:
+            if res.status_code == 429:
+                raise Exception('Got 429 (too many requests) status code from the server')
+            else:
+                raise Exception(f'Got {res.status_code} status code from the server')
         res = json.loads(res.content)
         ip = res[0]['internalipaddress']
         self.base_url = f"https://{ip}/clip/v2"

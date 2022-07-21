@@ -1,12 +1,12 @@
-F20::Light_Control("off", "Davids Room")
-F21::Light_Control("read", "Davids Room")
-F22::Light_Control("relax", "Davids Room")
-F23::Light_Control("nightlight", "Davids Room")
+F20::Light_Control("off", "Living room")
+F21::Light_Control("read", "Living room")
+F22::Light_Control("relax", "Living room")
+F23::Light_Control("nightlight", "Living room")
 
-^F20::Light_Control("off", "Living Room")
-^F21::Light_Control("read", "Living Room")
-^F22::Light_Control("relax", "Living Room")
-^F23::Light_Control("nightlight", "Living Room")
+^F20::Light_Control("off", "Bedroom")
+^F21::Light_Control("read", "Bedroom")
+^F22::Light_Control("relax", "Bedroom")
+^F23::Light_Control("nightlight", "Bedroom")
 
 
 Light_Control(setting, room) {
